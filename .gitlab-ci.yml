@@ -1,0 +1,12 @@
+stages:
+  - lint
+
+lint:
+  stage: lint
+  image: python:3.9
+  script:
+    - pip install flake8
+    - flake8 .
+  only:
+    - main
+    - merge_requests
