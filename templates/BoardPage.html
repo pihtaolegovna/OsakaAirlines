@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Управление рейсами{% endblock %}
+
+{% block content %}
+
+<div class="container mt-5">
+    <h1 class="text-left">Управление бортами</h1>
+
+    <form method="GET" action="{% url 'board_management' %}" class="mb-4 card card-body rounded-4 shadow">
+        <div class="form-row">
+            <div class="row">
+                <div class="col-11">
+                    <div class="row">
+                        <div class="col-4">
+                            <input type="text" name="filter" class="form-control" placeholder="Поиск по номеру борта..." value="{{ request.GET.filter }}">
+                        </div>
+                        <div class="col-4">
+                            <select name="model" id="modelFilter" class="form-control">
+                                <option value="">Все модели</option>
+                                {% for model in models %}
+                                    <option value="{{ model.id }}" {% if request.GET.model == model.id %}selected{% endif %}>{{ model.manufacturer.name }} {{ model.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <select name="status" id="statusFilter" class="form-control">
+                                <option value="">Все</option>
+                                <option value="active" {% if request.GET.status == '' or request.GET.status == 'active' %}selected{% endif %}>Активные</option>
+                                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Неактивные</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-1">
+                    <button type="submit" class="btn btn-primary w-100">Фильтр</button>
+                </div>
+
+            </div>
+        </div>
+    </form>
+
+    <!-- Таблица бортов -->
+    <form method="POST" action="{% url 'board_management' %}">
+        {% csrf_token %}
+        <div class="card card-body rounded-4 shadow">
+            <table class="table table-hover rounded-4 table-borderless bg-transparent">
+                <thead class="bg-transparent">
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Номер борта</th>
+                    <th>Количество мест</th>
+                    <th>Год</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for board in boards %}
+                <tr class="bg-transparent">
+                    <td><input type="checkbox" name="ids" value="{{ board.id }}"></td>
+                    <td>{{ board.id }}</td>
+                    <td>{{ board.board_number }}</td>
+                    <td>{{ board.seats_amount }}</td>
+                    <td>{{ board.year }}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editBoardModal" data-id="{{ board.id }}" data-board_number="{{ board.board_number }}" data-model="{{ board.model.id }}">Редактировать</button>
+                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteBoardModal" data-id="{{ board.id }}">Удалить</button>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="window.location.href='{% url 'edit_seats_view' board_id=board.id %}'">Редактировать места</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card card-body shadow rounded-4 mb-4 mt-4">
+            <div class="row">
+                <div class="col-2">
+                    <button type="submit" name="multi_delete" class="btn btn-danger">Удалить выбранные</button>
+                </div>
+                <div class="col text-center">
+                    <div class="row align-items-center">
+                        <div class="col justify-content-end text-end">
+                            <div class="text">Страница {{ page_number|default:"1" }} из {{ paginator.num_pages }}</div>
+                        </div>
+                        <div class="col-2">
+                            <nav>
+                                <ul class="pagination m-0 p-0">
+                                    {% if boards.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ boards.previous_page_number }}&filter={{ request.GET.filter }}&model={{ request.GET.model }}&status={{ request.GET.status }}">Предыдущая</a>
+                                    </li>
+                                    {% endif %}
+                                    {% for num in boards.paginator.page_range %}
+                                        <li class="page-item {% if boards.number == num %}active{% endif %}">
+                                            <a class="page-link" href="?page={{ num }}&filter={{ request.GET.filter }}&model={{ request.GET.model }}&status={{ request.GET.status }}">{{ num }}</a>
+                                        </li>
+                                    {% endfor %}
+                                    {% if boards.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ boards.next_page_number }}&filter={{ request.GET.filter }}&model={{ request.GET.model }}&status={{ request.GET.status }}">Следующая</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                <div class="col text-end">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createBoardModal">Создать новый борт</button>
+                </div>
+            </div>
+    </form>
+
+    <!-- Модальное окно создания борта -->
+    <div class="modal fade" id="createBoardModal" tabindex="-1" aria-labelledby="createBoardModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'board_management' %}">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createBoardModalLabel">Создание нового борта</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {{ create_form.as_p }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="create_board" class="btn btn-primary">Создать</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования борта -->
+    <div class="modal fade" id="editBoardModal" tabindex="-1" aria-labelledby="editBoardModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'board_management' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="board_id" id="editBoardId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editBoardModalLabel">Редактирование борта</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editBoardNumber">Номер борта</label>
+                            <input type="text" class="form-control" id="editBoardNumber" name="board_number" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="editSeatsAmount">Количество мест</label>
+                            <input type="number" class="form-control" id="editSeatsAmount" name="seats_amount" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="editYear">Год</label>
+                            <input type="number" class="form-control" id="editYear" name="year" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="editModel">Модель</label>
+                            <select class="form-control" id="editModel" name="model">
+                                {% for model in models %}
+                                    <option value="{{ model.id }}">{{ model.manufacturer.name }} {{ model.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="edit_board" class="btn btn-warning">Сохранить изменения</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно удаления борта -->
+<div class="modal fade" id="deleteBoardModal" tabindex="-1" aria-labelledby="deleteBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'board_management' %}">
+                {% csrf_token %}
+                <input type="hidden" name="board_id" id="deleteBoardId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteBoardModalLabel">Подтвердите удаление</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Закрыть">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Вы уверены, что хотите удалить этот борт? Это действие нельзя отменить.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                    <button type="submit" name="delete_board" class="btn btn-danger">Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    // Обработчик открытия модального окна для редактирования борта
+    $('#editBoardModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Кнопка, вызвавшая модальное окно
+        var boardId = button.data('id');
+        var boardNumber = button.data('board_number');
+        var model = button.data('model');
+
+        var modal = $(this);
+        modal.find('#editBoardId').val(boardId);
+        modal.find('#editBoardNumber').val(boardNumber);
+        modal.find('#editModel').val(model);
+    });
+
+    // Обработчик открытия модального окна для удаления борта
+    $('#deleteBoardModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Кнопка, вызвавшая модальное окно
+        var boardId = button.data('id');
+
+        var modal = $(this);
+        modal.find('#deleteBoardId').val(boardId);
+    });
+</script>
+
+{% endblock %}

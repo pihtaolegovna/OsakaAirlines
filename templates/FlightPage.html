@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Management{% endblock %}
+
+{% block content %}
+
+ <div class="container mt-5">
+        <h1 class="mb-4">Flight Management</h1>
+
+        <div class="card card-body pb-0 mb-3 rounded-4">
+            <form method="GET" class="d-flex mb-3">
+            <input type="text" name="filter" class="form-control me-2" placeholder="Search..." value="{{ request.GET.filter }}">
+            <select name="date_filter" class="form-select me-2">
+                <option value="all" {% if date_filter == 'all' %}selected{% endif %}>All Flights</option>
+                <option value="future" {% if date_filter == 'future' %}selected{% endif %}>Future Flights</option>
+                <option value="past" {% if date_filter == 'past' %}selected{% endif %}>Past Flights</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Filter</button>
+            </form>
+        </div>
+
+        <!-- Flights Table -->
+        <div class="card card-body pb-0 rounded-4">
+            <table class="table table-borderless table-hover">
+                <thead>
+                    <tr>
+                        <th><a href="?sort=id&order={% if sort == 'id' and order == 'asc' %}desc{% else %}asc{% endif %}">ID</a></th>
+                        <th><a href="?sort=board__board_number&order={% if sort == 'board__board_number' and order == 'asc' %}desc{% else %}asc{% endif %}">Board</a></th>
+                        <th><a href="?sort=departure_airport__name&order={% if sort == 'departure_airport__name' and order == 'asc' %}desc{% else %}asc{% endif %}">Departure Airport</a></th>
+                        <th><a href="?sort=arrival_airport__name&order={% if sort == 'arrival_airport__name' and order == 'asc' %}desc{% else %}asc{% endif %}">Arrival Airport</a></th>
+                        <th><a href="?sort=departure_time&order={% if sort == 'departure_time' and order == 'asc' %}desc{% else %}asc{% endif %}">Departure Time</a></th>
+                        <th><a href="?sort=arrival_time&order={% if sort == 'arrival_time' and order == 'asc' %}desc{% else %}asc{% endif %}">Arrival Time</a></th>
+                        <th><a href="?sort=delay_time&order={% if sort == 'delay_time' and order == 'asc' %}desc{% else %}asc{% endif %}">Delay Time</a></th>
+                        <th><a href="?sort=terminal&order={% if sort == 'teminal' and order == 'asc' %}desc{% else %}asc{% endif %}">Терминал, Выход</a></th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flight in flights %}
+                    <tr>
+                        <td>{{ flight.id }}</td>
+                        <td>{{ flight.board.board_number }}</td>
+                        <td>{{ flight.departure_airport.name }}</td>
+                        <td>{{ flight.arrival_airport.name }}</td>
+                        <td>{{ flight.departure_time }}</td>
+                        <td>{{ flight.arrival_time }}</td>
+                        <td>{{ flight.delay_time }}</td>
+                        <td>{{ flight.terminal }} {{ flight.gate }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editFlightModal" 
+                                data-id="{{ flight.id }}" 
+                                data-board="{{ flight.board.id }}"
+                                data-departure-airport="{{ flight.departure_airport.id }}"
+                                data-arrival-airport="{{ flight.arrival_airport.id }}"
+                                data-departure-time="{{ flight.departure_time|date:"Y-m-d\TH:i" }}"
+                                data-arrival-time="{{ flight.arrival_time|date:"Y-m-d\TH:i" }}"
+                                data-delay-time="{{ flight.delay_time|date:"Y-m-d\TH:i" }}"
+                                data-gate="{{ flight.gate }}" 
+                                data-terminal="{{ flight.terminal }}">Edit</button>
+
+                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteFlightModal" 
+                                data-id="{{ flight.id }}">Delete</button>
+
+                            <a href="{% url 'staffhub:view_flight_with_seat' flight.id %}" class="btn btn-sm btn-primary">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center">No flights found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card card-body rounded-4 mt-3">
+            <div class="row">
+                <div class="col">
+                    <div class="pagination">
+                        {% if flights.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ flights.previous_page_number }}" aria-label="Previous">&laquo;</a>
+                        </li>
+                        {% endif %}
+                        {% for page in flights.paginator.page_range %}
+                        <li class="page-item {% if page == flights.number %}active{% endif %}">
+                            <a class="page-link" href="?page={{ page }}">{{ page }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if flights.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ flights.next_page_number }}" aria-label="Next">&raquo;</a>
+                        </li>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col text-end">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFlightModal">Create Flight</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Flight Modal -->
+        <div class="modal fade" id="createFlightModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h5 class="modal-title">Create Flight</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            {{ create_form.as_p }}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" name="create_flight" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Flight Modal -->
+        <div class="modal fade" id="editFlightModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Flight</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="flight_id" id="edit-flight-id">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="edit-board" class="form-label">Board</label>
+                                    <select name="board" id="edit-board" class="form-select">
+                                        {% for board in boards %}
+                                        <option value="{{ board.id }}">{{ board.board_number }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-departure-airport" class="form-label">Departure Airport</label>
+                                    <select name="departure_airport" id="edit-departure-airport" class="form-select">
+                                        {% for airport in airports %}
+                                        <option value="{{ airport.id }}">{{ airport.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-arrival-airport" class="form-label">Arrival Airport</label>
+                                    <select name="arrival_airport" id="edit-arrival-airport" class="form-select">
+                                        {% for airport in airports %}
+                                        <option value="{{ airport.id }}">{{ airport.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-departure-time" class="form-label">Departure Time</label>
+                                    <input type="datetime-local" name="departure_time" id="edit-departure-time" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-arrival-time" class="form-label">Arrival Time</label>
+                                    <input type="datetime-local" name="arrival_time" id="edit-arrival-time" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-delay-time" class="form-label">Delay Time</label>
+                                    <input type="datetime-local" name="delay_time" id="edit-delay-time" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-gate" class="form-label">Gate</label>
+                                    <input type="text" name="gate" id="edit-gate" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-terminal" class="form-label">Terminal</label>
+                                    <input type="text" name="terminal" id="edit-terminal" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-business-class-price" class="form-label">Business Class Price</label>
+                                    <input type="number" step="0.01" name="business_class_price" id="edit-business-class-price" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit-economy-class-price" class="form-label">Economy Class Price</label>
+                                    <input type="number" step="0.01" name="economy_class_price" id="edit-economy-class-price" class="form-control">
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" name="edit_flight" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Flight Modal -->
+        <div class="modal fade" id="deleteFlightModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="flight_id" id="delete-flight-id">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Delete Flight</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete this flight?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" name="delete_flight" class="btn btn-danger">Delete</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6.4.1/dist/js/tempus-dominus.min.js"></script>
+    <script>
+        const editFlightModal = document.getElementById('editFlightModal');
+        editFlightModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const flightId = button.getAttribute('data-id');
+            const boardId = button.getAttribute('data-board');
+            const departureAirportId = button.getAttribute('data-departure-airport');
+            const arrivalAirportId = button.getAttribute('data-arrival-airport');
+            const departureTime = button.getAttribute('data-departure-time');
+            const arrivalTime = button.getAttribute('data-arrival-time');
+            const delayTime = button.getAttribute('data-delay-time');
+            const gate = button.getAttribute('data-gate');
+            const terminal = button.getAttribute('data-terminal');
+
+            document.getElementById('edit-flight-id').value = flightId;
+            document.getElementById('edit-board').value = boardId;
+            document.getElementById('edit-departure-airport').value = departureAirportId;
+            document.getElementById('edit-arrival-airport').value = arrivalAirportId;
+            document.getElementById('edit-departure-time').value = departureTime;
+            document.getElementById('edit-arrival-time').value = arrivalTime;
+            document.getElementById('edit-delay-time').value = delayTime;
+            document.getElementById('edit-gate').value = gate;
+            document.getElementById('edit-terminal').value = terminal;
+        });
+    </script>
+
+{% endblock %}

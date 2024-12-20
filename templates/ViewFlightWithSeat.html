@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Management{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <h1 class="text-center">Flight and Seat Information</h1>
+    <div class="row">
+        <div class="col-3">
+            <h3>Flight Info</h3>
+            <ul class="list-group">
+                <li class="list-group-item"><strong>Flight:</strong> {{ flight.id }}</li>
+                <li class="list-group-item"><strong>Departure:</strong> {{ flight.departure_airport.name }} - {{ flight.departure_time }}</li>
+                <li class="list-group-item"><strong>Arrival:</strong> {{ flight.arrival_airport.name }} - {{ flight.arrival_time }}</li>
+                <li class="list-group-item"><strong>Gate:</strong> {{ flight.gate }}</li>
+                <li class="list-group-item"><strong>Terminal:</strong> {{ flight.terminal }}</li>
+                <li class="list-group-item"><strong>Delay Time:</strong> {{ flight.delay_time }}</li>
+            </ul>
+        </div>
+
+        <!-- Flight Seats Section (right col) -->
+        <div class="col-6">
+            <h3>Flight Seats</h3>
+            {% if tickets %}
+            <table class="table table-bordered table-striped text-dark">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Client</th>
+                        <th>Flight</th>
+                        <th>Seat</th>
+                        <th>Status</th>
+                        <th>Price</th>
+                        <th>Paid</th>
+                        <th>Canceled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ticket.client.user.login }}</td>
+                        <td>
+                            Flight {{ ticket.flight_seat.flight.id }}<br>
+                            From {{ ticket.flight_seat.flight.departure_airport.name }}<br>
+                            To {{ ticket.flight_seat.flight.arrival_airport.name }}
+                        </td><td>{{ ticket.flight_seat.seat }} {{ ticket.flight_seat.row_letter }}</td>
+                        <td>{{ ticket.flight_seat.get_status_display }}</td>
+                        <td>{{ ticket.flight_seat.price }}</td>
+                        <td>{% if ticket.is_paid %}Yes{% else %}No{% endif %}</td>
+                        <td>{% if ticket.is_canceled %}Yes{% else %}No{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <p>No tickets available for this flight.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Seat Layout Section -->
+        <div class="col-3">
+            <h3>Seat Layout</h3>
+            <div class="seat-layout" id="seatLayout"></div>
+        </div>
+    </div>
+
+    <!-- Hidden Input Controls for Layout (can be revealed for customization) -->
+    <div class="mb-3" hidden>
+        <label for="rows" class="form-label">Rows:</label>
+        <input type="number" class="form-control" id="rows" value="{{ columns_count }}">
+    </div>
+    <div class="mb-3" hidden>
+        <label for="seats" class="form-label">Seats per Row:</label>
+        <input type="number" class="form-control" id="seats" value="{{ rows_count }}">
+    </div>
+    <div class="mb-3" hidden>
+        <label for="business" class="form-label">Business Class Seats:</label>
+        <input type="number" class="form-control" id="business" value="{{ business_class_row_count }}">
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const rowsInput = document.getElementById('rows');
+    const seatsInput = document.getElementById('seats');
+    const businessInput = document.getElementById('business');
+    const seatLayout = document.getElementById('seatLayout');
+
+    const gaps = {
+        2: [1],
+        4: [2],
+        6: [3],
+        5: [1, 4],
+        7: [2, 5],
+        8: [2, 6],
+        9: [3, 6],
+        10: [3, 7]
+    };
+
+    const rowColors = [
+        '#CC0000', '#CC9933', '#339933', '#336699', '#CC6699',
+        '#666699', '#B8860B', '#9ACD32', '#008B8B', '#CD5C5C'
+    ];
+
+    const darkerRowColors = [
+        '#B8860B',  // Dark Gold
+        '#C49A6C',  // Bronze Gold
+        '#D4AF37',  // Old Gold
+        '#FFD700',  // Pure Gold
+        '#F4C430',  // Golden Yellow
+        '#D19B00',  // Mustard Gold
+        '#F1C27D',  // Light Gold
+        '#C8B56E',  // Light Bronze
+        '#E1B500',  // Sunlit Gold
+        '#BDB76B'   // Olive Gold
+    ];
+
+    // Generate seat layout with status color highlighting
+    function generateLayout() {
+        seatLayout.innerHTML = '';
+        const rows = parseInt(rowsInput.value);
+        const seats = parseInt(seatsInput.value);
+        const businessClassSeats = parseInt(businessInput.value);
+
+        const rowGaps = gaps[seats] || [];
+
+        const generatedSeatsDiv = document.createElement('div');
+        generatedSeatsDiv.className = 'generated-seats';
+
+        // Generate rows and seats dynamically
+        for (let i = 1; i <= rows; i++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row justify-content-center';
+
+            for (let j = 1; j <= seats; j++) {
+                const seatDiv = document.createElement('div');
+                seatDiv.className = 'seat';
+
+                // Apply gap styling
+                if (rowGaps.includes(j)) {
+                    seatDiv.style.marginRight = '20px';
+                }
+
+                // Apply color based on seat status
+                if (i <= businessClassSeats) {
+                    seatDiv.style.backgroundColor = darkerRowColors[j - 1] || '#FFFFFF';
+                } else {
+                    seatDiv.style.backgroundColor = rowColors[j - 1] || '#FFFFFF';
+                }
+
+                // Display seat info
+                seatDiv.innerText = `${i}${String.fromCharCode(64 + j)}`;
+                rowDiv.appendChild(seatDiv);
+            }
+
+            generatedSeatsDiv.appendChild(rowDiv);
+        }
+
+        seatLayout.appendChild(generatedSeatsDiv);
+    }
+
+    generateLayout();
+</script>
+
+{% endblock %}

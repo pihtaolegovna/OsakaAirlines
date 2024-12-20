@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Поиск рейсов</h1>
+    <!-- Карточка поиска -->
+    <div class="card rounded-4 shadow">
+        <div class="card-body">
+            <form method="get" action="{% url 'clienthub:find_flights' %}">
+                <div class="row">
+                    <div class="col-5">
+                        <input type="text" name="departure" class="form-control" id="departure" placeholder="Место отправления" value="{{ request.GET.departure }}" required>
+                    </div>
+                    <div class="col-1">
+                        <button type="button" id="swap-btn" class="btn btn-transparent rounded-4 w-100">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+                    <div class="col-5">
+                        <input type="text" name="arrival" class="form-control" id="arrival" placeholder="Место прибытия" value="{{ request.GET.arrival }}" required>
+                    </div>
+                    <div class="col-1 text-right">
+                        <button type="submit" class="btn btn-primary">Найти</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h3 class="mt-3">Доступные рейсы</h3>
+    <div class="row">
+        {% for flight in flights %}
+        <div class="col-md-12 mb-4">
+            <div class="card p-1 rounded-4 shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Flight Name and Board -->
+                        <div class="col-md-6 mb-1">
+                            <h3 class="d-inline fs-4">Рейс <span class="fw-bold text-themed">{{ flight.name }}</span></h3>
+                        </div>
+
+                        <div class="col-md-6 mb-1 d-flex justify-content-end">
+                            <h3 class="fs-4">{{ flight.board }}</h3>
+                        </div>
+                    </div>
+
+                    <!-- Flight Departure and Arrival Information -->
+                    <div class="row mb-2 d-flex">
+                        <div class="col-md-5 mx-1 card card-body rounded-4 shadow-sm">
+                            <h4 class="fs-4 mb-2 text-themed">{{ flight.departure_airport.place.name }}</h4>
+                            <p class="fs-6 mb-0">{{ flight.departure_time|date:"d.m.Y, H:i" }}</p>
+                            <h5 class="fs-6 mb-0">из<span class="text-themed"> {{ flight.departure_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.departure_airport.name }})</p></h5>
+                            
+                        </div>
+
+                        <div class="col-md-5 mx-1 card card-body rounded-4 d-flex text-end shadow-sm">
+                            <h4 class="fs-4 mb-2 text-themed">{{ flight.arrival_airport.place.name }}</h4>
+                            <p class="fs-6 mb-0">{{ flight.arrival_time|date:"d.m.Y, H:i" }}</p>
+                            <h5 class="fs-6 mb-0">В<span class="text-themed"> {{ flight.arrival_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.arrival_airport.name }})</p></h5>
+                        </div>
+                    </div>
+
+                    <!-- Flight Prices -->
+                    <div class="row mb-0">
+                        <div class="col-md-6">
+                            <h5 class="fs-6">Эконом-класс: {{ flight.economy_class_price|floatformat:2 }} руб.</h5>
+                            <h5 class="fs-6">Бизнес-класс: {{ flight.business_class_price|floatformat:2 }} руб.</h5>
+                        </div>
+
+                        <div class="col-md-6 d-flex justify-content-end align-items-center">
+                            <a href="{% url 'clienthub:select_seat' flight.id %}" class="btn btn-secondary text-center rounded-3">Выбрать место</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not flights %}
+        <p>Рейсы не найдены.</p>
+    {% endif %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+<script>
+    $(document).ready(function() {
+        var places = {{ place_names|safe }};  // Передаем список мест в JavaScript
+
+        // Автозаполнение для поля "departure"
+        $('#departure').autocomplete({
+            source: places,
+            minLength: 2,  // Минимальная длина для поиска
+            classes: {
+                "ui-autocomplete bg-body": "dropdown-menu"  // Применяем Bootstrap стиль
+            }
+        });
+
+        // Автозаполнение для поля "arrival"
+        $('#arrival').autocomplete({
+            source: places,
+            minLength: 2,  // Минимальная длина для поиска
+            classes: {
+                "ui-autocomplete bg-body": "dropdown-menu"  // Применяем Bootstrap стиль
+            }
+        });
+
+        // Функция для обмена значениями в полях "departure" и "arrival"
+        $('#swap-btn').click(function() {
+            var departure = $('#departure').val();
+            var arrival = $('#arrival').val();
+            $('#departure').val(arrival);
+            $('#arrival').val(departure);
+        });
+    });
+</script>
+{% endblock %}

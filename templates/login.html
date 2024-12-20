@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Авторизация{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center mt-5">
+    <div class="card shadow-sm rounded-4 mt-5" style="max-width: 400px; width: 100%;">
+      <div class="card-body p-4">
+        <h2 class="text-center mb-4">Авторизация</h2>
+
+        <!-- Форма входа -->
+        <form method="POST">
+          {% csrf_token %}
+          
+          <!-- Поле ввода для электронной почты -->
+          <div class="mb-3">
+            <label for="username" class="form-label">Логин</label>
+            <input type="text" name="username" id="username" class="form-control rounded-3" value="{{ form.username.value }}" required placeholder="Введите логин">
+          </div>
+
+          <!-- Поле ввода для пароля -->
+          <div class="mb-3">
+            <label for="password" class="form-label">Пароль</label>
+            <input type="password" name="password" id="password" class="form-control rounded-3" value="{{ form.password.value }}" required placeholder="Введите пароль">
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary rounded-3">Авторизоваться</button>
+            <a href="{% url 'staffhub:register' %}" class="btn btn-secondary rounded-3">Регистрация</a>
+
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

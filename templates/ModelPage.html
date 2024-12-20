@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Management{% endblock %}
+
+{% block content %}
+
+
+
+<div class="container mt-5">
+    <h1 class="text-center">Model Management</h1>
+    <!-- Filter Form -->
+    <form method="GET" action="{% url 'model_management' %}" class="mb-4">
+        <div class="card card-body rounded-4">
+            <div class="row">
+                <div class="col">
+                    <input type="text" name="filter" class="form-control" placeholder="Filter by name..." value="{{ request.GET.filter }}">
+                </div>
+                <div class="col">
+                    <select name="manufacturer" id="manufacturerFilter" class="form-control">
+                        <option value="">All Manufacturers</option>
+                        {% for manufacturer in manufacturers %}
+                            <option value="{{ manufacturer.id }}" {% if request.GET.manufacturer == manufacturer.id %}selected{% endif %}>{{ manufacturer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col">
+                    <select name="status" id="statusFilter" class="form-control">
+                        <option value="">All</option>
+                        <option value="active" {% if request.GET.status == '' or request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Table of Models -->
+    <form method="POST" action="{% url 'model_management' %}">
+        {% csrf_token %}
+        <div class="card card-body rounded-4">
+            <table class="table table-borderless m-0 table-hover">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th></th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for model in models %}
+                <tr>
+                    <td><input type="checkbox" name="ids" value="{{ model.id }}"></td>
+                    <td>{{ model.id }}</td>
+                    <td>{{ model.manufacturer }} {{ model.name }}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editModelModal" data-id="{{ model.id }}" data-name="{{ model.name }}" data-manufacturer="{{ model.manufacturer.id }}">Edit</button>
+                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteModelModal" data-id="{{ model.id }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    <div class="card card-body rounded-4 mt-4">
+        <div class="row">
+            <div class="col">
+                <button type="submit" name="multi_delete" class="btn btn-danger">Delete Selected</button>
+            </div>
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span>Page {{ page_number|default:"1" }} of {{ paginator.num_pages }}</span>
+                    </div>
+                    <div>
+                        <nav>
+                            <div class="pagination">
+                                {% if models.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ models.previous_page_number }}&filter={{ request.GET.filter }}&manufacturer={{ request.GET.manufacturer }}&status={{ request.GET.status }}">Previous</a>
+                                </li>
+                                {% endif %}
+                                {% for num in models.paginator.page_range %}
+                                    <li class="page-item {% if models.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?page={{ num }}&filter={{ request.GET.filter }}&manufacturer={{ request.GET.manufacturer }}&status={{ request.GET.status }}">{{ num }}</a>
+                                    </li>
+                                {% endfor %}
+                                {% if models.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ models.next_page_number }}&filter={{ request.GET.filter }}&manufacturer={{ request.GET.manufacturer }}&status={{ request.GET.status }}">Next</a>
+                                </li>
+                                {% endif %}
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <div class="col text-end">
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createModelModal">Create New Model</button>
+            </div>
+        </div>    
+    </div>
+
+    <!-- Pagination -->
+    
+
+    <!-- Create Model Button -->
+
+    <!-- Create Model Modal -->
+    <div class="modal fade" id="createModelModal" tabindex="-1" aria-labelledby="createModelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'model_management' %}">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createModelModalLabel">Create New Model</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {{ create_form.as_p }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="create_model" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Model Modal -->
+    <div class="modal fade" id="editModelModal" tabindex="-1" aria-labelledby="editModelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'model_management' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="model_id" id="editModelId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModelModalLabel">Edit Model</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editModelName">Name</label>
+                            <input type="text" class="form-control" id="editModelName" name="name" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="editModelManufacturer">Manufacturer</label>
+                            <select class="form-control" id="editModelManufacturer" name="manufacturer">
+                                {% for manufacturer in manufacturers %}
+                                <option value="{{ manufacturer.id }}">{{ manufacturer.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="edit_model" class="btn btn-warning">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Model Modal -->
+    <div class="modal fade" id="deleteModelModal" tabindex="-1" aria-labelledby="deleteModelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'model_management' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="model_id" id="deleteModelId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModelModalLabel">Confirm Delete</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to delete this model?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="delete_model" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    $('#editModelModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Button that triggered the modal
+        var modelId = button.data('id');
+        var modelName = button.data('name');
+        var modelManufacturer = button.data('manufacturer');
+    
+        var modal = $(this);
+        modal.find('#editModelId').val(modelId); // Set model ID in hidden field
+        modal.find('#editModelName').val(modelName); // Set name in input field
+        modal.find('#editModelManufacturer').val(modelManufacturer); // Set manufacturer in select field
+    });
+
+    $('#deleteModelModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var modelId = button.data('id');
+
+        var modal = $(this);
+        modal.find('#deleteModelId').val(modelId);
+    });
+</script>
+{% endblock %} 

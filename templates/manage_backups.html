@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Manage Backups</h1>
+
+    <h2>Existing Backups</h2>
+    <ul>
+        {% for backup in backups %}
+        <li>
+            {{ backup }}
+            <form method="POST" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="restore">
+            <input type="hidden" name="backup_filename" value="{{ backup }}">
+            <button type="submit">Restore</button>
+            </form>
+        </li>
+        {% empty %}
+        <li>No backups available.</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Create Backup</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <button type="submit">Create Backup</button>
+    </form>
+  </div>
+{% endblock %}

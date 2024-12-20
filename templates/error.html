@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4">Oops!</h1>
+            <h2 class="mb-4">Something went wrong</h2>
+
+            {% if error_code %}
+                <p class="lead">Error Code: {{ error_code }}</p>
+                <p class="lead">{{ message }}</p>
+            {% else %}
+                <p class="lead">{{ message }}</p>
+            {% endif %}
+            
+            <a href="{% url 'staffhub:home' %}" class="btn btn-primary mt-3">Go Back to Home</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

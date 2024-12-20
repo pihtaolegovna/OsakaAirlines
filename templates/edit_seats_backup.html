@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airplane Seat Layout Generator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .seat {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            text-align: center;
+            line-height: 40px;
+            margin: 2px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .input-group input {
+            font-size: 1.5rem;
+            width: 80px;
+        }
+        .seat-layout {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center">Airplane Seat Layout Generator</h1>
+    <form method="POST" id="seatForm">
+        {% csrf_token %}
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-4">
+                <label for="seats" class="form-label">Seats per Row:</label>
+                <input type="number" id="seats" name="seats" min="8" max="65" value="{{ seats_per_row }}" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="rows" class="form-label">Number of Rows:</label>
+                <input type="number" id="rows" name="rows" min="2" max="10" value="{{ rows }}" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="business" class="form-label">Business Class Rows:</label>
+                <input type="number" id="business" name="business" min="1" max="{{ rows }}" value="{{ business_seats }}" class="form-control">
+            </div>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Update Layout</button>
+        </div>
+    </form>
+    <div class="container-fluid">
+        <div class="seat-layout" id="seatLayout"></div>
+    </div>
+</div>
+
+<script>
+    const rowsInput = document.getElementById('rows');
+    const seatsInput = document.getElementById('seats');
+    const businessInput = document.getElementById('business');
+    const seatLayout = document.getElementById('seatLayout');
+
+    const gaps = {
+        2: [1],
+        4: [2],
+        6: [3],
+        5: [1, 4],
+        7: [2, 5],
+        8: [2, 6],
+        9: [3, 6],
+        10: [3, 7]
+    };
+
+    const rowColors = [
+        '#FFCCCC',
+        '#FFDD99',
+        '#99FF99',
+        '#99CCFF',
+        '#FF99CC',
+        '#CCCCFF',
+        '#FFD700',
+        '#ADFF2F',
+        '#20B2AA',
+        '#FFB6C1'
+    ];
+
+    const darkerRowColors = [
+        '#CC0000',
+        '#CC9933', 
+        '#339933', 
+        '#336699', 
+        '#CC6699', 
+        '#666699', 
+        '#B8860B', 
+        '#9ACD32', 
+        '#008B8B', 
+        '#CD5C5C'
+    ];
+
+    function generateLayout() {
+        seatLayout.innerHTML = '';
+        const rows = parseInt(rowsInput.value);
+        const seats = parseInt(seatsInput.value);
+        const businessClassSeats = parseInt(businessInput.value);
+
+        const rowGaps = gaps[rows] || [];
+
+        const generatedSeatsDiv = document.createElement('div');
+        generatedSeatsDiv.className = 'generated-seats';
+        generatedSeatsDiv.style.border = '4px solid black';
+        generatedSeatsDiv.style.borderRadius = '10px';
+        generatedSeatsDiv.style.padding = '25px';
+        generatedSeatsDiv.style.display = 'inline-block';
+
+        for (let i = 1; i <= seats; i++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row justify-content-center';
+
+            for (let j = 1; j <= rows; j++) {
+                const seatDiv = document.createElement('div');
+                seatDiv.className = 'seat';
+
+                if (rowGaps.includes(j)) {
+                    seatDiv.style.marginRight = '20px';
+                }
+
+                if (i <= businessClassSeats) {
+                    seatDiv.style.backgroundColor = darkerRowColors[j - 1] || '#FFFFFF';
+                } else {
+                    seatDiv.style.backgroundColor = rowColors[j - 1] || '#FFFFFF';
+                }
+
+                seatDiv.innerText = `${i}${String.fromCharCode(64 + j)}`;
+                rowDiv.appendChild(seatDiv);
+            }
+
+            generatedSeatsDiv.appendChild(rowDiv);
+        }
+
+        seatLayout.appendChild(generatedSeatsDiv);
+    }
+
+    generateLayout();
+
+    rowsInput.addEventListener('input', generateLayout);
+    seatsInput.addEventListener('input', generateLayout);
+    businessInput.addEventListener('input', generateLayout);
+</script>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

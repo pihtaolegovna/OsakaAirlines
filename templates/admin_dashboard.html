@@ -1,0 +1,627 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+
+<div class="container mt-4">
+    <h1>
+    {% if is_verbose %}
+        {{ current_model.get_model_name|get_model_verbose_name }}
+    {% else %}
+        {{ model }}
+    {% endif %}
+    </h1>
+    <div class="card card-body shadow rounded-4">
+        <ul class="nav nav-pills nav-fill">
+            {% for model in models %}
+            <li class="nav-item mx-1">
+                <a class="nav-link rounded-3 shadow-sm {% if model == model_name %}active{% endif %}" 
+                    href="?model_name={{ model }}">
+                    {% if is_verbose %}
+                        {{ model|get_model_verbose_name }}
+                    {% else %}
+                        {{ model }}
+                    {% endif %}
+                    </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="mt-3 card card-body shadow rounded-4 fade-card">
+        <div class="row">
+            <div class="col">
+                <input type="text" id="searchBox" placeholder="{% if is_verbose %}Поиск...{% else %}Search...{% endif %}" class="form-control">
+            </div>
+            <div class="col-2">
+                <button id="searchButton" class="btn btn-primary w-100">{% if is_verbose %}Поиск{% else %}Search{% endif %}</option></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 card card-body shadow rounded-4 fade-card-2">
+        <div class="row">
+            {% for field, options in filters.items %}
+                {% if field not in 'id,password' %}
+                    <div class="col">
+                        <select id="filter_{{ field }}" name="{{ field }}" class="form-control">
+                            <option value="">{% if is_verbose %}
+                                                {{ field_verbose_names|get_item:field }}
+                                            {% else %}
+                                                {{ field }}
+                                            {% endif %}
+                                            </option>
+                            {% if options %}
+                                {% for option in options %}
+                                    {% if option|length == 2 and option.0|stringformat:"s"|default_if_none:"" != "" %}
+                                        <option value="{{ option.0 }}">{{ option.1 }}</option>
+                                    {% else %}
+                                        <option value="{{ option }}">{{ option }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No options available</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <div class="col-2">
+                <button id="filterButton" class="btn btn-secondary w-100">{% if is_verbose %}Фильтр{% else %}Filter{% endif %}</button>
+            </div>
+        </div>
+    </div>
+        
+    <div class="mt-3 card card-body shadow rounded-4 fade-card-3">
+        <table id="dataTable" class="table table-borderless table-hover mb-0">
+            <thead>
+                <tr>
+                    {% for field in fields %}
+                        {% if field not in "password, is_dark_theme, is_transparent, accent_color, business_class_price, economy_class_price" %}
+                        <th class="sortable" data-field="{{ field }}">
+                            <a>
+                                {% if is_verbose %}
+                                    {{ field_verbose_names|get_item:field }}
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="bg-transparent"></th>
+                        {% endif %}
+                    {% endfor %}
+                    <th class="nonsortable">
+                        <a>
+                            {% if is_verbose %}Действия{% else %}Actions{% endif %}
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="rounded bg-transparent mt-2">
+                {% for row in page_obj %}
+                <tr class="rounded bg-transparent mt-2">
+                    {% for field in fields %}
+                        {% if field not in "password, is_dark_theme, is_transparent, accent_color, business_class_price, economy_class_price" %}
+                            <td class="bg-transparent">
+                                <a>
+                                {% if field == "model" %}
+                                    {% if row.model and row.model.manufacturer %}
+                                        {{ row.model.manufacturer.name }}
+                                    {% else %}
+                                        No Manufacturer
+                                    {% endif %}
+                                {% else %}
+                                    {{ row|getattr_field:field }}
+                                {% endif %}
+                                </a>
+                            </td>
+                            <td class="bg-transparent"></td>
+                        {% endif %}
+                    {% endfor %}
+                    <td class="text-center bg-transparent">
+                        <button class="btn btn-transparent" data-toggle="modal" data-target="#editModal"
+                            data-id="{{ row.id }}" 
+                            {% for field in fields %}
+                                {% if field.id %}
+                                    {% if row.field.verbose_name %}
+                                        <!-- If the field has a related name, get the related object's ID -->
+                                        data-{{ field }}="{{ row|getattr_field:field.id }}"
+                                    {% else %}
+                                        <!-- Otherwise, use the field value -->
+                                        data-{{ field }}="{{ row|getattr_field:field }}"
+                                    {% endif %}
+                                {% else %}
+                                    data-{{ field }}="{{ row|getattr_field:field }}"
+                                {% endif %}
+                            {% endfor %}
+                            data-field="edit">
+                            <i class="bi bi-pencil-fill" style="color: gray;"></i>
+                        </button>
+
+                        <button class="btn btn-transparent" data-toggle="modal" data-target="#deleteModal" 
+                            data-id="{{ row.id }}" data-field="delete">
+                            <i class="bi bi-trash-fill" style="color: gray;"></i>
+                        </button>
+
+
+                        {% if current_model.get_model_name == "Board" %}<button type="button" class="btn btn-md btn-warning" onclick="window.location.href='{% url 'staffhub:edit_seats_view' board_id=row.id %}'">{% if is_verbose %}Места{% else %}Seats{% endif %}</button>{% endif %}
+                        {% if current_model.get_model_name == "Flight" %}<button type="button" class="btn btn-md btn-warning" onclick="window.location.href='{% url 'staffhub:view_flight_with_seat' flight_id=row.id %}'">{% if is_verbose %}Места{% else %}Seats{% endif %}</button>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="card card-body shadow rounded-4 mt-4 fade-card-4">
+    <div class="row">
+        <div class="col">
+            <nav class="d-flex justify-content-between align-items-center">
+                <ul class="pagination m-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?model_name={{ model_name }}&page={{ page_obj.previous_page_number }}&search={{ search_query }}&sort={{ sort_by }}{% for key, value in filter_params.items %}&{{ key }}={{ value }}{% endfor %}">
+                                {% if is_verbose %}Назад{% else %}Back{% endif %}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">{% if is_verbose %}Назад{% else %}Back{% endif %}</span>
+                        </li>
+                    {% endif %}
+                    {% with page_range=page_obj.paginator.page_range %}
+                        {% for page_num in page_range %}
+                            {% if page_num >= page_obj.number|add:'-7' and page_num <= page_obj.number|add:'7' %}
+                                <li class="page-item {% if page_obj.number == page_num %}active{% else %}bg-gray{% endif %}">
+                                    <a class="page-link" href="?model_name={{ model_name }}&page={{ page_num }}&search={{ search_query }}&sort={{ sort_by }}{% for key, value in filter_params.items %}&{{ key }}={{ value }}{% endfor %}">{{ page_num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?model_name={{ model_name }}&page={{ page_obj.next_page_number }}&search={{ search_query }}&sort={{ sort_by }}{% for key, value in filter_params.items %}&{{ key }}={{ value }}{% endfor %}">
+                                {% if is_verbose %}Вперед{% else %}Next{% endif %}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">{% if is_verbose %}Вперед{% else %}Next{% endif %}</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-success" data-toggle="modal" data-target="#createModal">
+                {% if is_verbose %}Добавить{% else %}Add New{% endif %}
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
+                Импорт
+            </button>
+            <a href="?export=json&model_name={{ model_name }}{% for key, value in filter_params.items %}&{{ key }}={{ value }}{% endfor %}" class="btn btn-warning">
+                Экспорт
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">Импорт JSON</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="jsonFileInput" class="form-label">Выберите файл JSON</label>
+                        <input type="file" name="json_file" id="jsonFileInput" class="form-control" accept=".json" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="import_json" class="btn btn-primary">Импортировать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-body-cul">
+            <form method="POST" action="{% url 'adminapp:dashboard' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <input type="hidden" name="model_name" value="{{ current_model.get_model_name }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createModalLabel">Create ghdfjshjfsdjhgdfbas {{ current_model.get_model_name }}</h5>
+                </div>
+                <div class="modal-body">
+                    {% for field in form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {% if field.field.widget.input_type == "text" %}
+                        <input type="text" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                        {% elif field.field.widget.input_type == "password" %}
+                        <input type="password" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                        {% elif field.field.widget.input_type == "email" %}
+                        <input type="email" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                        {% elif field.field.widget.input_type == "number" %}
+                        <input type="number" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}" step="any">
+                        {% elif field.field.widget.input_type == "checkbox" %}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="{{ field.id_for_label }}" name="{{ field.name }}" {% if field.value %}checked{% endif %}>
+                            <label class="form-check-label" for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                            </label>
+                        </div>
+                        {% elif field.field.widget.input_type == "color" %}
+                            <input type="color" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'#000000' }}">
+                        {% elif field.field.widget.input_type == "datetime-local" %}
+                        <input type="datetime-local" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                        {% elif field.field.widget.input_type == "select" %}
+                        <select class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}">
+                            {% for option in field.field.widget.choices %}
+                            <option value="{{ option.0 }}" {% if option.0 == field.value %}selected{% endif %}>{{ option.1 }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input type="text" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-body-cul">
+            <form method="POST" action="{% url 'adminapp:dashboard' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="id" id="edit_id">
+                <input type="hidden" name="model_name" value="{{ current_model.get_model_name }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit {{ current_model.get_model_name }}</h5>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    {% for field in form %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {% if field.field.widget.input_type == "text" %}
+                                <input type="text" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                            {% elif field.field.widget.input_type == "password" %}
+                                <input type="password" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                            {% elif field.field.widget.input_type == "email" %}
+                                <input type="email" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                            {% elif field.field.widget.input_type == "number" %}
+                                <input type="number" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}" step="any">
+                            {% elif field.field.widget.input_type == "color" %}
+                                <input type="color" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'#000000' }}">
+                            {% elif field.field.widget.input_type == "checkbox" %}
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="{{ field.id_for_label }}" name="{{ field.name }}" {% if field.value %}checked{% endif %}>
+                                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                                        {{ field.label }}
+                                    </label>
+                                </div>
+                            {% elif field.field.widget.input_type == "datetime-local" %}
+                                <input type="datetime-local" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                            {% elif field.field.widget.input_type == "select" %}
+                            <select class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}">
+                                {% for option in field.field.widget.choices %}
+                                    {% if option|length == 2 %}
+                                        <option value="{{ option.0 }}" {% if option.0 == field.value %}selected{% endif %}>{{ option.1 }}</option>
+                                    {% else %}
+                                        <option value="{{ option }}">{{ option }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                                <input type="text" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}" value="{{ field.value|default:'' }}">
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-body-cul">
+            <form method="POST" action="{% url 'adminapp:dashboard' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="model_name" value="{{ current_model.get_model_name }}">
+                <input type="hidden" name="id" id="delete_id">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this {{ current_model.get_model_name }}?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    $('#deleteModal').on('show.bs.modal', function(event) {
+        var button = $(event.relatedTarget);
+        var modal = $(this);
+
+        var deleteId = button.data('id');
+        modal.find('#delete_id').val(deleteId);
+    });
+</script>
+
+<script>
+$('#editModal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget);
+    var fieldData = button.data();
+
+    var modal = $(this);
+    var id = fieldData.id;
+    modal.find('#edit_id').val(id); // Set the ID in the hidden input
+
+    {% for field in fields %}
+        {% if field.id %}
+            var fieldValue = fieldData['{{ field.id }}'] || ''; // Get the field's value from button data
+            
+            // Handle datetime-local fields
+            if (field.type === 'datetime-local' && fieldValue) {
+                // Check if the fieldValue is a valid date string
+                var date = new Date(fieldValue);
+                
+                // If the field value is a valid date, format it to 'YYYY-MM-DDTHH:MM'
+                if (!isNaN(date.getTime())) {
+                    var formattedDate = date.getFullYear() + '-' +
+                        ('0' + (date.getMonth() + 1)).slice(-2) + '-' +
+                        ('0' + date.getDate()).slice(-2) + 'T' +
+                        ('0' + date.getHours()).slice(-2) + ':' +
+                        ('0' + date.getMinutes()).slice(-2); // Format to 'YYYY-MM-DDTHH:MM'
+
+                    modal.find('#id_{{ field }}').val(formattedDate); // Set the formatted date value in the input
+                }
+            } else {
+                // For other fields, directly set the value if it's not empty
+                if (fieldValue) {
+                    modal.find('#id_{{ field }}').val(fieldValue); // Set the value in the modal input
+                }
+            }
+        {% else %}
+            var fieldValue = fieldData['{{ field }}'] || ''; // Get the field's value from button data
+            if (fieldValue) {
+                modal.find('#id_{{ field }}').val(fieldValue); // Set the value in the modal input
+            }
+        {% endif %}
+    {% endfor %}
+});
+
+</script>
+
+
+
+
+
+
+
+<script>
+    function getQueryParams() {
+        const params = new URLSearchParams(window.location.search);
+        return params;
+    }
+
+    document.getElementById('searchButton').addEventListener('click', function () {
+        const params = getQueryParams();
+        const searchTerm = document.getElementById('searchBox').value.trim();
+        params.set('search', searchTerm);
+        window.location.href = '?' + params.toString();
+    });
+
+    document.getElementById('filterButton').addEventListener('click', function () {
+        const params = getQueryParams();
+        const filterElements = document.querySelectorAll('[id^="filter_"]');
+        filterElements.forEach(function (filter) {
+            const value = filter.value.trim();
+            if (value) {
+                params.set(filter.name, value);
+            } else {
+                params.delete(filter.name);
+            }
+        });
+
+        const searchTerm = document.getElementById('searchBox').value.trim();
+        if (searchTerm) {
+            params.set('search', searchTerm);
+        }
+
+        window.location.href = '?' + params.toString();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.getElementById('dataTable');
+        let currentSort = {
+            field: null,
+            direction: 'asc',
+        };
+
+        table.querySelectorAll('.sortable').forEach(function(header) {
+            header.addEventListener('click', function() {
+                const field = header.getAttribute('data-field');
+                const direction = currentSort.field === field && currentSort.direction === 'asc' ? 'desc' : 'asc';
+
+                sortTable(field, direction);
+                currentSort = { field: field, direction: direction };
+            });
+        });
+
+        function sortTable(field, direction) {
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            rows.sort(function(rowA, rowB) {
+                const cellA = rowA.querySelector(`td:nth-child(${getColumnIndex(field)})`);
+                const cellB = rowB.querySelector(`td:nth-child(${getColumnIndex(field)})`);
+                let textA = cellA.innerText.trim().toLowerCase();
+                let textB = cellB.innerText.trim().toLowerCase();
+
+                if (direction === 'asc') {
+                    return textA > textB ? 1 : (textA < textB ? -1 : 0);
+                } else {
+                    return textA < textB ? 1 : (textA > textB ? -1 : 0);
+                }
+            });
+
+            rows.forEach(function(row) {
+                table.querySelector('tbody').appendChild(row);
+            });
+        }
+
+        function getColumnIndex(field) {
+            const headers = Array.from(table.querySelectorAll('th'));
+            const fieldIndex = headers.findIndex(function(header) {
+                return header.innerText.trim().toLowerCase() === field.toLowerCase();
+            });
+
+            return fieldIndex + 1;
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('dataTable');
+    let currentSort = {
+        field: null,
+        direction: 'asc',
+    };
+
+    table.querySelectorAll('th.sortable').forEach(function(header) {
+        header.addEventListener('click', function() {
+            const field = header.getAttribute('data-field');
+            const direction = currentSort.field === field && currentSort.direction === 'asc' ? 'desc' : 'asc';
+
+            sortTable(field, direction);
+            currentSort = { field: field, direction: direction };
+        });
+    });
+
+    function sortTable(field, direction) {
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const columnIndex = getColumnIndex(field);
+
+        rows.sort(function(rowA, rowB) {
+            const cellA = rowA.querySelector(`td:nth-child(${columnIndex})`);
+            const cellB = rowB.querySelector(`td:nth-child(${columnIndex})`);
+            let textA = cellA ? cellA.innerText.trim().toLowerCase() : '';
+            let textB = cellB ? cellB.innerText.trim().toLowerCase() : '';
+
+            if (direction === 'asc') {
+                return textA > textB ? 1 : (textA < textB ? -1 : 0);
+            } else {
+                return textA < textB ? 1 : (textA > textB ? -1 : 0);
+            }
+        });
+
+        rows.forEach(function(row) {
+            table.querySelector('tbody').appendChild(row);
+        });
+    }
+
+    function getColumnIndex(field) {
+        const headers = Array.from(table.querySelectorAll('th'));
+        const fieldIndex = headers.findIndex(function(header) {
+            return header.getAttribute('data-field') === field;
+        });
+        return fieldIndex + 1;
+    }
+
+    function getColumnIndex(field) {
+        const headers = Array.from(document.querySelectorAll('#dataTable th'));
+        return headers.findIndex(header => header.innerText.trim().toLowerCase() === field.toLowerCase()) + 1;
+    }
+
+    window.onload = function() {
+        const card = document.querySelector('.fade-card');
+        const card2 = document.querySelector('.fade-card-2');
+        const card3 = document.querySelector('.fade-card-3');
+        const card4 = document.querySelector('.fade-card-4');
+
+        setTimeout(() => card4.classList.add('show'), 150);
+        setTimeout(() => card3.classList.add('show'), 100);
+        setTimeout(() => card2.classList.add('show'), 50);
+        setTimeout(() => card.classList.add('show'), 0);
+    };
+
+    $('#editModal').on('show.bs.modal', function(event) {
+    var button = $(event.relatedTarget); // Button that triggered the modal
+    var modal = $(this); // Modal itself
+
+    // Loop through all data-* attributes of the button
+    $.each(button[0].dataset, function(key, value) {
+        var fieldId = 'id-' + key.replace('data-', ''); // Remove "data-" from the key to match modal input ids
+        var inputField = modal.find('#' + fieldId); // Find the input field by the dynamically generated id
+
+        if (inputField.length) {
+            // Handle different input types
+            if (inputField.is('input[type="text"], input[type="email"], input[type="number"], input[type="color"], input[type="password"], input[type="datetime-local"]')) {
+                inputField.val(value); // Set value for text-based inputs
+            } else if (inputField.is('select')) {
+                inputField.val(value); // Set selected option for select inputs
+            } else if (inputField.is('input[type="checkbox"]')) {
+                // If it's a checkbox, check it if the value is 'True' or 'false'
+                if (value === 'True' || value === true) {
+                    inputField.prop('checked', true);
+                } else {
+                    inputField.prop('checked', false);
+                }
+            }
+        }
+    });
+
+    // Specifically populate hidden fields (like id and model_name)
+    $('#edit_id').val(button.data('id'));  // Set the id for the edit form
+});
+
+});
+
+    
+</script>
+
+{% endblock %}

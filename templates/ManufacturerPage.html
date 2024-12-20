@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Management{% endblock %}
+
+{% block content %}
+
+
+<div class="container mt-5">
+    <h1 class="text-center">Manufacturer Management</h1>
+
+    <div class="card card-body rounded-4 mb-4">
+        <form method="GET" action="{% url 'manufacturer_management' %}">
+            <div class="row">
+                <div class="col-auto">
+                    <input type="text" name="filter" class="form-control" placeholder="Filter by name..." value="{{ request.GET.filter }}">
+                </div>
+                <div class="col-auto">
+                    <select name="status" id="statusFilter" class="form-control">
+                        <option value="">All</option>
+                        <option value="active" {% if request.GET.status == '' or request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col text-end">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table of Manufacturers -->
+    <div class="card card-body rounded-4 mb-4">
+        <form method="POST" action="{% url 'manufacturer_management' %}">
+            {% csrf_token %}
+            <table class="table table-borderless table-hover">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Manufacturer Name</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for manufacturer in manufacturers %}
+                <tr>
+                    <td><input type="checkbox" name="ids" value="{{ manufacturer.id }}"></td>
+                    <td>{{ manufacturer.id }}</td>
+                    <td>{{ manufacturer.name }}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editManufacturerModal" data-id="{{ manufacturer.id }}" data-name="{{ manufacturer.name }}">Edit</button>
+                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteManufacturerModal" data-id="{{ manufacturer.id }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            
+        </form>
+    </div>
+
+    <div class="card card-body rounded-4 mb-4">
+
+    <!-- Create Manufacturer Modal -->
+    <div class="modal fade" id="createManufacturerModal" tabindex="-1" aria-labelledby="createManufacturerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'manufacturer_management' %}">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createManufacturerModalLabel">Create New Manufacturer</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {{ create_form.as_p }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="create_manufacturer" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Manufacturer Modal -->
+    <div class="modal fade" id="editManufacturerModal" tabindex="-1" aria-labelledby="editManufacturerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'manufacturer_management' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="manufacturer_id" id="editManufacturerId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editManufacturerModalLabel">Edit Manufacturer</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editManufacturerName">Name</label>
+                            <input type="text" class="form-control" id="editManufacturerName" name="name" value="">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="edit_manufacturer" class="btn btn-warning">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Manufacturer Modal -->
+    <div class="modal fade" id="deleteManufacturerModal" tabindex="-1" aria-labelledby="deleteManufacturerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{% url 'manufacturer_management' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="manufacturer_id" id="deleteManufacturerId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteManufacturerModalLabel">Confirm Delete</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to delete this manufacturer?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" name="delete_manufacturer" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <span>Page {{ page_number|default:"1" }} of {{ paginator.num_pages }}</span>
+        </div>
+        <div>
+            <nav>
+                <ul class="pagination">
+                    {% if manufacturers.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ manufacturers.previous_page_number }}&filter={{ request.GET.filter }}&status={{ request.GET.status }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    {% for num in manufacturers.paginator.page_range %}
+                        <li class="page-item {% if manufacturers.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}&filter={{ request.GET.filter }}&status={{ request.GET.status }}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if manufacturers.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ manufacturers.next_page_number }}&filter={{ request.GET.filter }}&status={{ request.GET.status }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.6/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    $('#editManufacturerModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Button that triggered the modal
+        var manufacturerId = button.data('id');
+        var manufacturerName = button.data('name');
+    
+        var modal = $(this);
+        modal.find('#editManufacturerId').val(manufacturerId); // Set manufacturer ID in hidden field
+        modal.find('#editManufacturerName').val(manufacturerName); // Set name in input field
+    });
+
+    $('#deleteManufacturerModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var manufacturerId = button.data('id');
+
+        var modal = $(this);
+        modal.find('#deleteManufacturerId').val(manufacturerId);
+    });
+</script>
+
+{% endblock %} 

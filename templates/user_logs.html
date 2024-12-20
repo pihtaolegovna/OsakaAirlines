@@ -1,0 +1,43 @@
+<!-- templates/user_logs.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Entity Logs</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Entity Name</th>
+                <th>Entity ID</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in page_obj %}
+                <tr>
+                    <td>{{ log.id }}</td>
+                    <td>{{ log.entity_name }}</td>
+                    <td>{{ log.entity_id }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.details }}</td>
+                    <td>{{ log.timestamp }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div>
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div>
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+
+{% endblock %}

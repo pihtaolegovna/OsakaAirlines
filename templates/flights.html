@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Полеты{% endblock %}
+{% load static %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6.4.1/dist/css/tempus-dominus.min.css" rel="stylesheet">
+
+<!-- Load Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<style>
+    #map {
+        height: 800px;
+        width: 100%;
+    }
+    {% include 'css/style.css' %}
+</style>
+
+<div class="container mt-4">
+    <h1 class="mt-4">
+        Карта полетов
+    </h1>
+    <div id="map" class="rounded-4"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Initialize the map
+    var map = L.map('map').setView([20, 0], 2); // Center map at an arbitrary location
+
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Flight data from Django view
+    var flights = {{ flight_data|safe }};
+    var planeMarkers = {}; // Store plane markers for updating positions
+
+    flights.forEach(function(flight) {
+        var departureLat = flight.departure_place.latitude;
+        var departureLng = flight.departure_place.longitude;
+        var arrivalLat = flight.arrival_place.latitude;
+        var arrivalLng = flight.arrival_place.longitude;
+
+        // Draw the flight path
+        var flightPath = L.polyline([[departureLat, departureLng], [arrivalLat, arrivalLng]], { color: 'blue' }).addTo(map);
+
+        // Calculate initial mid-point for the plane based on elapsed time
+        var duration = flight.duration; // in minutes
+        var elapsed = flight.elapsed_time; // in minutes
+
+        // Ensure elapsed time is within bounds
+        elapsed = Math.min(elapsed, duration); // Cap elapsed time at duration
+
+        // Calculate the initial position of the plane
+        var midLat = departureLat + (arrivalLat - departureLat) * (elapsed / duration);
+        var midLng = departureLng + (arrivalLng - departureLng) * (elapsed / duration);
+
+        // Calculate the angle of the flight path
+        var y = arrivalLat - departureLat;
+        var x = arrivalLng - departureLng;
+        var angle = Math.atan2(y, x) * (180 / Math.PI) + 121; // Convert to degrees
+
+        // Add start and end markers
+        L.marker([departureLat, departureLng], {
+            icon: L.icon({
+                iconUrl: "{% static 'mark.png' %}",
+                iconSize: [38, 38]
+            })
+        }).addTo(map).bindPopup('Departure: ' + flight.departure_place.name);
+
+        L.marker([arrivalLat, arrivalLng], {
+            icon: L.icon({
+                iconUrl: "{% static 'mark.png' %}",
+                iconSize: [38, 38]
+            })
+        }).addTo(map).bindPopup('Arrival: ' + flight.arrival_place.name);
+
+        // Add plane marker at mid-point with rotation
+        var planeIcon = L.divIcon({
+            className: 'rotated-plane', // Custom class for rotation
+            html: '<img src="{% static "plane-icon.png" %}" style="padding-bottom: 5%; width: 24px; height: 24px; transform: rotate(' + angle + 'deg);" />',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+        });
+
+        var planeMarker = L.marker([midLat, midLng], { icon: planeIcon }).addTo(map)
+            .bindPopup('Flight: ' + flight.id + '<br>Departure: ' + flight.departure_place.name + '<br>Arrival: ' + flight.arrival_place.name)
+            .openPopup();
+
+        // Store the plane marker for live updates
+        planeMarkers[flight.id] = {
+            marker: planeMarker,
+            elapsed: elapsed,
+            duration: duration,
+            departure: [departureLat, departureLng],
+            arrival: [arrivalLat, arrivalLng],
+        };
+    });
+
+    // Function to update plane positions
+    function updatePlanePositions() {
+        Object.keys(planeMarkers).forEach(function(flightId) {
+            var flight = planeMarkers[flightId];
+            flight.elapsed += 1 / 60; // Increment elapsed time by 1 minute (assuming updates every second)
+
+            if (flight.elapsed <= flight.duration) {
+                var elapsedRatio = flight.elapsed / flight.duration;
+                var newLat = flight.departure[0] + (flight.arrival[0] - flight.departure[0]) * elapsedRatio;
+                var newLng = flight.departure[1] + (flight.arrival[1] - flight.departure[1]) * elapsedRatio;
+
+                // Update marker position
+                flight.marker.setLatLng([newLat, newLng]);
+
+                // Update rotation
+                var y = flight.arrival[0] - flight.departure[0];
+                var x = flight.arrival[1] - flight.departure[1];
+                var angle = Math.atan2(y, x) * (180 / Math.PI) + 121; // Convert to degrees
+                flight.marker.setIcon(L.divIcon({
+                    className: 'rotated-plane',
+                    html: '<img src="{% static "plane-icon.png" %}" style="padding-bottom: 5%; width: 24px; height: 24px; transform: rotate(' + angle + 'deg);" />',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12],
+                }));
+            } else {
+                // If flight is finished, remove the marker or keep it in place
+                flight.marker.remove();
+                delete planeMarkers[flightId]; // Remove from updates
+            }
+        });
+    }
+
+    // Update positions every second
+    setInterval(updatePlanePositions, 1000);
+</script>
+</body>
+</html>
+{% endblock %}

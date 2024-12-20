@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- Левая часть: Навигация по полетам -->
+        <div class="col-lg-9">
+            <div class="card rounded-4">
+                <div class="card-body">
+                    <ul class="nav nav-pills card-header-pills mb-3 ml-2" id="flightTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="upcoming-flights-tab" data-bs-toggle="pill" href="#upcoming-flights" role="tab" aria-controls="upcoming-flights" aria-selected="true">Предстоящие полеты</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="flight-history-tab" data-bs-toggle="pill" href="#flight-history" role="tab" aria-controls="flight-history" aria-selected="false">История полетов</a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="flightTabsContent">
+                        <!-- Предстоящие полеты -->
+                        <div class="tab-pane fade show active" id="upcoming-flights" role="tabpanel" aria-labelledby="upcoming-flights-tab">
+                            <div class="col-md-12 mb-4">
+                                {% for flight in upcoming_flights %}
+                                    <div class="card p-1 mb-3 rounded-4 shadow">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <!-- Flight Name and Board -->
+                                                <div class="col-md-6 mb-1">
+                                                    <h3 class="d-inline fs-4">Рейс <span class="fw-bold text-themed">{{ flight.name }}</span></h3>
+                                                </div>
+
+                                                <div class="col-md-6 mb-1 d-flex justify-content-end">
+                                                    <h3 class="fs-4">{{ flight.board }}</h3>
+                                                </div>
+                                            </div>
+
+                                            <!-- Flight Departure and Arrival Information -->
+                                            <div class="row mb-2 d-flex">
+                                                <div class="col-md-5 mx-1 card card-body rounded-4 shadow-sm">
+                                                    <h4 class="fs-4 mb-2 text-themed">{{ flight.departure_airport.place.name }}</h4>
+                                                    <p class="fs-6 mb-0">{{ flight.departure_time|date:"d.m.Y, H:i" }}</p>
+                                                    <h5 class="fs-6 mb-0">из<span class="text-themed"> {{ flight.departure_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.departure_airport.name }})</p></h5>
+                                                    
+                                                </div>
+
+                                                <div class="col-md-5 mx-1 card card-body rounded-4 d-flex text-end shadow-sm">
+                                                    <h4 class="fs-4 mb-2 text-themed">{{ flight.arrival_airport.place.name }}</h4>
+                                                    <p class="fs-6 mb-0">{{ flight.arrival_time|date:"d.m.Y, H:i" }}</p>
+                                                    <h5 class="fs-6 mb-0">В<span class="text-themed"> {{ flight.arrival_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.arrival_airport.name }})</p></h5>
+                                                </div>
+                                            </div>
+
+                                            <!-- Flight Prices -->
+                                            <div class="row mb-0">
+                                                <div class="col-md-6">
+                                                    <h5 class="fs-6">Эконом-класс: {{ flight.economy_class_price|floatformat:2 }} руб.</h5>
+                                                    <h5 class="fs-6">Бизнес-класс: {{ flight.business_class_price|floatformat:2 }} руб.</h5>
+                                                </div>
+                                            </div>
+
+                                            <!-- Additional Flight Info -->
+                                            <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                    {% if flight.delay_time %}
+                                                        <p class="fs-6 mb-1"><strong>Время задержки:</strong> {{ flight.delay_time|date:"d.m.Y, H:i" }}</p>
+                                                    {% else %}
+                                                        <p class="fs-6 mb-1"><strong>Время задержки:</strong> Нет задержки</p>
+                                                    {% endif %}
+                                                    <p class="fs-6 mb-1"><strong>Выход:</strong> {% if flight.gate %}{{ flight.gate }}{% else %}Не указан{% endif %}</p>
+                                                    <p class="fs-6 mb-1"><strong>Терминал:</strong> {% if flight.terminal %}{{ flight.terminal }}{% else %}Не указан{% endif %}</p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Cancel Ticket Button (if ticket exists for this flight) -->
+                                            {% for ticket in tickets %}
+                                                {% if ticket.flight_seat.flight == flight and not ticket.is_canceled %}
+                                                    <form action="{% url 'clienthub:cancel_ticket' ticket.id %}" method="post">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-danger">Отменить билет</button>
+                                                    </form>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <p>Нет предстоящих полетов.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- История полетов -->
+                        <div class="tab-pane fade" id="flight-history" role="tabpanel" aria-labelledby="flight-history-tab">
+                            <div class="col-md-12 mb-4">
+                                {% for flight in past_flights %}
+                                    <div class="card p-1 rounded-4 mb-3 shadow">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <!-- Flight Name and Board -->
+                                                <div class="col-md-6 mb-1">
+                                                    <h3 class="d-inline fs-4">Рейс <span class="fw-bold text-themed">{{ flight.name }}</span></h3>
+                                                </div>
+
+                                                <div class="col-md-6 mb-1 d-flex justify-content-end">
+                                                    <h3 class="fs-4">{{ flight.board }}</h3>
+                                                </div>
+                                            </div>
+
+                                            <!-- Flight Departure and Arrival Information -->
+                                            <div class="row mb-2 d-flex">
+                                                <div class="col-md-5 mx-1 card card-body rounded-4 shadow-sm">
+                                                    <h4 class="fs-4 mb-2 text-themed">{{ flight.departure_airport.place.name }}</h4>
+                                                    <p class="fs-6 mb-0">{{ flight.departure_time|date:"d.m.Y, H:i" }}</p>
+                                                    <h5 class="fs-6 mb-0">из<span class="text-themed"> {{ flight.departure_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.departure_airport.name }})</p></h5>
+                                                    
+                                                </div>
+
+                                                <div class="col-md-5 mx-1 card card-body rounded-4 d-flex text-end shadow-sm">
+                                                    <h4 class="fs-4 mb-2 text-themed">{{ flight.arrival_airport.place.name }}</h4>
+                                                    <p class="fs-6 mb-0">{{ flight.arrival_time|date:"d.m.Y, H:i" }}</p>
+                                                    <h5 class="fs-6 mb-0">В<span class="text-themed"> {{ flight.arrival_airport.full_name }}</span><p class="fs-6 mb-0 d-inline text-themed"> ({{ flight.arrival_airport.name }})</p></h5>
+                                                </div>
+                                            </div>
+
+                                            <!-- Flight Prices -->
+                                            <div class="row mb-0">
+                                                <div class="col-md-6">
+                                                    <h5 class="fs-6">Эконом-класс: {{ flight.economy_class_price|floatformat:2 }} руб.</h5>
+                                                    <h5 class="fs-6">Бизнес-класс: {{ flight.business_class_price|floatformat:2 }} руб.</h5>
+                                                </div>
+                                            </div>
+
+                                            <!-- Additional Flight Info -->
+                                            <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                    {% if flight.delay_time %}
+                                                        <p class="fs-6 mb-1"><strong>Время задержки:</strong> {{ flight.delay_time|date:"d.m.Y, H:i" }}</p>
+                                                    {% else %}
+                                                        <p class="fs-6 mb-1"><strong>Время задержки:</strong> Нет задержки</p>
+                                                    {% endif %}
+                                                    <p class="fs-6 mb-1"><strong>Выход:</strong> {% if flight.gate %}{{ flight.gate }}{% else %}Не указан{% endif %}</p>
+                                                    <p class="fs-6 mb-1"><strong>Терминал:</strong> {% if flight.terminal %}{{ flight.terminal }}{% else %}Не указан{% endif %}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <p>Нет истории полетов.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая часть: Форма редактирования профиля -->
+        <div class="col-lg-3">
+            <div class="card rounded-4">
+                <div class="card-body">
+                    <h3 class="mb-3">Профиль</h3>
+                    <form method="post" action="{% url 'staffhub:profile' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="first_name" class="form-label"><strong>Имя</strong></label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="middle_name" class="form-label"><strong>Отчество</strong></label>
+                            <input type="text" class="form-control" id="middle_name" name="middle_name" value="{{ user.middle_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="last_name" class="form-label"><strong>Фамилия</strong></label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                        </div>
+
+                        {% if user.role == 'client' %}
+                            <div class="mb-3">
+                                <label for="phone" class="form-label"><strong>Телефон</strong></label>
+                                <input type="text" class="form-control" id="phone" name="phone" value="{{ client.phone }}">
+                            </div>
+                        {% endif %}
+
+                        {% if user.role != 'client' %}
+                            <div class="mb-3">
+                                <label for="email" class="form-label"><strong>Электронная почта</strong></label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ user.employee.email }}">
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="is_dark_theme" class="form-label"><strong>Темная тема</strong></label>
+                            <select class="form-select" id="is_dark_theme" name="is_dark_theme">
+                                <option value="True" {% if user.is_dark_theme %}selected{% endif %}>Темная</option>
+                                <option value="False" {% if not user.is_dark_theme %}selected{% endif %}>Светлая</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="is_transparent" class="form-label"><strong>Прозрачный интерфейс</strong></label>
+                            <select class="form-select" id="is_transparent" name="is_transparent">
+                                <option value="True" {% if user.is_transparent %}selected{% endif %}>Да</option>
+                                <option value="False" {% if not user.is_transparent %}selected{% endif %}>Нет</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="accent_color" class="form-label"><strong>Цвет акцента</strong></label>
+                            <input type="color" class="form-control form-control-color" id="accent_color" name="accent_color" value="{{ user.accent_color }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="is_active" class="form-label"><strong>Активен</strong></label>
+                            <select class="form-select" id="is_active" name="is_active">
+                                <option value="True" {% if user.is_active %}selected{% endif %}>Да</option>
+                                <option value="False" {% if not user.is_active %}selected{% endif %}>Нет</option>
+                            </select>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
